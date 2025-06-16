@@ -15,6 +15,8 @@ ___
 11. springMVC流程
 12. 过滤器, 拦截器, 全局统一异常处理
 13. 浏览器输入url后发生了啥?
+14. APM监控工具
+15. elk使用
 
 
 # 数据库
@@ -36,7 +38,7 @@ ___
 11. 分布式事务?
 12. 多数据源配置?
 
-# 缓存
+# redis
 1. 本地缓存方案?
 2. redis缓存
 3. redis(集群哨兵模式, cluster模式)
@@ -57,17 +59,16 @@ ___
 
 # java基础
 1. java.util.concurrent包下的常用类
-2. 线程池配置实现动态调整参数
-3. OOM分析定位
-4. CPU100%分析定位
-5. jvm内存结构
+2. concurrentHashMap的锁机制
+3. 线程池配置实现动态调整参数
+4. OOM分析定位
+5. CPU100%分析定位
+6. jvm内存结构
 7. jvm垃圾回收
 8. java类加载器,双亲委派机制
 9. java泛型
 10. java反射
-11. APM监控工具
-12. elk使用
-13. 权限模型？？(RBAC  ABAC等)
+11. 权限模型？？(RBAC  ABAC等)
 ____
 
 // update nothing.
