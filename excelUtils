@@ -1,0 +1,136 @@
+package org.example;
+
+import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.ss.util.CellRangeAddress;
+import java.util.List;
+
+/**
+ * POI复杂表头生成工具类
+ * 支持动态表头集合（对象含title和children属性）
+ */
+public class ComplexHeaderUtils {
+
+    /**
+     * 生成复杂表头
+     * @param sheet 工作表对象
+     * @param headers 动态表头集合（顶层表头列表）
+     * @param headerStyle 表头样式（可传null使用默认样式）
+     * @return 表头总行数
+     */
+    public static int createComplexHeader(Sheet sheet, List<HeaderNode> headers, CellStyle headerStyle) {
+        // 计算表头总层级（行数）
+        int totalRows = calculateMaxDepth(headers, 0);
+        // 初始化样式（默认加粗居中）
+        CellStyle style = headerStyle != null ? headerStyle : createDefaultHeaderStyle(sheet.getWorkbook());
+        // 递归填充表头
+        int i = fillHeader(sheet, headers, 0, 0, totalRows - 1, style);
+        return totalRows;
+    }
+
+    /**
+     * 计算表头最大深度（总行数）
+     * @param nodes 表头节点列表
+     * @param currentDepth 当前深度（从0开始）
+     * @return 最大深度
+     */
+    private static int calculateMaxDepth(List<HeaderNode> nodes, int currentDepth) {
+        if (nodes == null || nodes.isEmpty()) {
+            return currentDepth + 1; // 叶子节点占一行
+        }
+        int maxDepth = currentDepth + 1;
+        for (HeaderNode node : nodes) {
+            int childDepth = calculateMaxDepth(node.getChildren(), currentDepth + 1);
+            maxDepth = Math.max(maxDepth, childDepth);
+        }
+        return maxDepth;
+    }
+
+    /**
+     * 递归填充表头内容并合并单元格
+     * @param sheet 工作表
+     * @param nodes 当前层级表头节点
+     * @param startRow 当前起始行
+     * @param startCol 当前起始列
+     * @param maxRow 最大行（总层数-1）
+     * @param style 表头样式
+     * @return 占用的列数
+     */
+    private static int fillHeader(Sheet sheet, List<HeaderNode> nodes, int startRow, int startCol, int maxRow, CellStyle style) {
+        if (nodes == null || nodes.isEmpty()) {
+            return 0;
+        }
+        int currentCol = startCol;
+        for (HeaderNode node : nodes) {
+            // 计算当前节点占用的列数（子节点总列数，无子集则占1列）
+            int colSpan = calculateColSpan(node);
+            // 计算当前节点占用的行数（从startRow到子节点最深行，无子集则到maxRow）
+            int endRow = node.getChildren() == null || node.getChildren().isEmpty() 
+                    ? maxRow 
+                    : startRow + calculateMaxDepth(node.getChildren(), 0) - 1;
+
+            // 合并单元格
+            CellRangeAddress region = new CellRangeAddress(startRow, endRow, currentCol, currentCol + colSpan - 1);
+            sheet.addMergedRegion(region);
+
+            // 填充标题（合并区域左上角单元格）
+            Row row = sheet.getRow(startRow);
+            if (row == null) {
+                row = sheet.createRow(startRow);
+            }
+            Cell cell = row.createCell(currentCol);
+            cell.setCellValue(node.getTitle());
+            cell.setCellStyle(style);
+
+            // 递归处理子节点（如果有）
+            if (node.getChildren() != null && !node.getChildren().isEmpty()) {
+                fillHeader(sheet, node.getChildren(), startRow + 1, currentCol, maxRow, style);
+            }
+
+            currentCol += colSpan; // 移动到下一列
+        }
+        return currentCol - startCol; // 返回当前层级占用的总列数
+    }
+
+    /**
+     * 计算单个节点占用的列数（子节点总列数，无子集则为1）
+     */
+    private static int calculateColSpan(HeaderNode node) {
+        if (node.getChildren() == null || node.getChildren().isEmpty()) {
+            return 1;
+        }
+        int span = 0;
+        for (HeaderNode child : node.getChildren()) {
+            span += calculateColSpan(child);
+        }
+        return span;
+    }
+
+    /**
+     * 创建默认表头样式（加粗、居中）
+     */
+    private static CellStyle createDefaultHeaderStyle(Workbook workbook) {
+        CellStyle style = workbook.createCellStyle();
+        Font font = workbook.createFont();
+        font.setBold(true);
+        style.setFont(font);
+        style.setAlignment(HorizontalAlignment.CENTER);
+        style.setVerticalAlignment(VerticalAlignment.CENTER);
+        return style;
+    }
+
+    /**
+     * 表头节点实体类（含title和children属性）
+     */
+    public static class HeaderNode {
+        private String title; // 表头标题
+        private List<HeaderNode> children; // 子表头（null表示叶子节点）
+
+        // 构造器、getter、setter
+        public HeaderNode(String title, List<HeaderNode> children) {
+            this.title = title;
+            this.children = children;
+        }
+        public String getTitle() { return title; }
+        public List<HeaderNode> getChildren() { return children; }
+    }
+}
