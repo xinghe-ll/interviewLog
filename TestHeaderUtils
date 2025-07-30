@@ -1,0 +1,50 @@
+package org.example;
+
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import java.io.FileOutputStream;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+
+public class TestHeaderUtils {
+    public static void main(String[] args) throws Exception {
+        // 1. 创建工作簿和工作表
+        XSSFWorkbook workbook = new XSSFWorkbook();
+        Sheet sheet = workbook.createSheet("测试表头");
+
+        // 2. 构建动态表头（示例：三级表头）
+        List<ComplexHeaderUtils.HeaderNode> headers = Arrays.asList(
+            // 第一列：学生信息（含姓名、学号）
+            new ComplexHeaderUtils.HeaderNode("学生信息", Arrays.asList(
+                new ComplexHeaderUtils.HeaderNode("姓名", null),
+                new ComplexHeaderUtils.HeaderNode("学号", null)
+            )),
+            // 第二列：成绩1（含语文、数学）
+            new ComplexHeaderUtils.HeaderNode("成绩1", Arrays.asList(
+                new ComplexHeaderUtils.HeaderNode("语文", null),
+                new ComplexHeaderUtils.HeaderNode("数学", null)
+            )),
+            // 第三列：成绩2（含英语、物理）
+            new ComplexHeaderUtils.HeaderNode("成绩2", Arrays.asList(
+                new ComplexHeaderUtils.HeaderNode("英语", null),
+                new ComplexHeaderUtils.HeaderNode("物理", null)
+            ))
+        );
+
+        // 3. 生成表头（返回表头总行数，用于后续填充数据）
+        int headerRows = ComplexHeaderUtils.createComplexHeader(sheet, headers, null);
+
+        // 4. 调整列宽（示例）
+        for (int i = 0; i < 6; i++) {
+            sheet.setColumnWidth(i, 20 * 256);
+        }
+
+        // 5. 写入文件
+        try (FileOutputStream fos = new FileOutputStream("动态表头示例.xlsx")) {
+            workbook.write(fos);
+        }
+        workbook.close();
+    }
+}
