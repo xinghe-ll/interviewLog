@@ -1,0 +1,223 @@
+import org.apache.poi.openxml4j.opc.OPCPackage;
+import org.apache.poi.xssf.eventusermodel.XSSFReader;
+import org.apache.poi.xssf.usermodel.XSSFRichTextString;
+import org.xml.sax.Attributes;
+import org.xml.sax.InputSource;
+import org.xml.sax.SAXException;
+import org.xml.sax.helpers.DefaultHandler;
+
+import javax.xml.parsers.SAXParser;
+import javax.xml.parsers.SAXParserFactory;
+import java.io.FileInputStream;
+import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
+
+/**
+ * 超大Excel（.xlsx）导入工具类（流式解析，低内存占用）
+ * 支持GB级文件，基于POI Event API实现
+ */
+public class BigExcelImportUtil {
+
+    /**
+     * 数据处理回调接口（业务层实现，自定义数据转换和行处理逻辑）
+     */
+    public interface DataHandler {
+        /**
+         * 工作表开始解析时触发（可做初始化操作，如获取表名）
+         * @param sheetName 当前工作表名称
+         */
+        default void onSheetStart(String sheetName) {}
+
+        /**
+         * 单元格数据转换（业务层自定义类型转换，如String→Date、String→Integer）
+         * @param cellValue 原始单元格值（String类型）
+         * @param columnIndex 列索引（从0开始）
+         * @return 转换后的单元格值（任意类型，如Object、String、Integer）
+         */
+        Object convertCellValue(String cellValue, int columnIndex);
+
+        /**
+         * 行数据处理（业务层实现行数据的业务逻辑，如校验、入库）
+         * @param rowData 转换后的行数据（List<Object>，顺序与列一致）
+         * @param rowNum 行号（从0开始，含表头）
+         * @return true：继续解析下一行；false：终止当前工作表解析
+         */
+        boolean handleRowData(List<Object> rowData, int rowNum);
+
+        /**
+         * 工作表解析结束时触发（可做收尾操作，如批量提交数据）
+         * @param sheetName 当前工作表名称
+         * @param totalRows 当前工作表总解析行数
+         */
+        default void onSheetEnd(String sheetName, int totalRows) {}
+    }
+
+    /**
+     * 核心导入方法：流式解析超大.xlsx文件
+     * @param filePath Excel文件路径（绝对路径，如"D:/big_data.xlsx"）
+     * @param dataHandler 数据处理回调（业务层实现）
+     * @throws Exception 解析过程中的异常（IO异常、SAX解析异常等）
+     */
+    public static void importExcel(String filePath, DataHandler dataHandler) throws Exception {
+        // 校验参数
+        Objects.requireNonNull(filePath, "Excel文件路径不能为空");
+        Objects.requireNonNull(dataHandler, "数据处理回调DataHandler不能为空");
+
+        // 1. 打开Excel文件流（OPCPackage是.xlsx的容器，基于ZIP格式）
+        try (InputStream fileIn = new FileInputStream(filePath);
+             OPCPackage opcPackage = OPCPackage.open(fileIn)) {
+
+            // 2. 创建XSSFReader（POI事件驱动解析的核心类）
+            XSSFReader xssfReader = new XSSFReader(opcPackage);
+
+            // 3. 获取SAX解析器（解析Excel底层的XML文件）
+            SAXParserFactory saxFactory = SAXParserFactory.newInstance();
+            SAXParser saxParser = saxFactory.newSAXParser();
+
+            // 4. 遍历所有工作表（.xlsx可能包含多个sheet）
+            XSSFReader.SheetIterator sheetIterator = (XSSFReader.SheetIterator) xssfReader.getSheetsData();
+            while (sheetIterator.hasNext()) {
+                // 4.1 获取当前工作表的输入流（每个sheet对应一个XML文件）
+                try (InputStream sheetIn = sheetIterator.next()) {
+                    String sheetName = sheetIterator.getSheetName();
+                    // 触发“工作表开始”回调
+                    dataHandler.onSheetStart(sheetName);
+
+                    // 4.2 创建自定义SAX处理器（逐行解析当前工作表）
+                    ExcelSheetHandler sheetHandler = new ExcelSheetHandler(dataHandler);
+                    // 4.3 开始解析当前工作表（SAX事件驱动）
+                    saxParser.parse(new InputSource(sheetIn), sheetHandler);
+
+                    // 触发“工作表结束”回调（传递总解析行数）
+                    dataHandler.onSheetEnd(sheetName, sheetHandler.getTotalRows());
+
+                    // 若业务层终止解析（handleRowData返回false），则停止后续工作表解析
+                    if (sheetHandler.isParseStopped()) {
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * 内部SAX处理器：监听Excel XML的行、单元格事件，逐行收集数据并触发回调
+     */
+    private static class ExcelSheetHandler extends DefaultHandler {
+        private final DataHandler dataHandler; // 业务层回调
+        private List<Object> currentRowData; // 当前行的数据（临时存储）
+        private StringBuilder currentCellValue; // 当前单元格的原始值
+        private int currentRowNum; // 当前行号（从0开始）
+        private int currentColumnIndex; // 当前列索引（从0开始）
+        private boolean isParsingCell; // 是否正在解析单元格
+        private boolean isParseStopped; // 是否终止解析（业务层控制）
+        private int totalRows; // 当前工作表总解析行数
+
+        public ExcelSheetHandler(DataHandler dataHandler) {
+            this.dataHandler = dataHandler;
+            this.currentRowData = new ArrayList<>();
+            this.currentCellValue = new StringBuilder();
+            this.currentRowNum = -1;
+            this.currentColumnIndex = -1;
+            this.isParsingCell = false;
+            this.isParseStopped = false;
+            this.totalRows = 0;
+        }
+
+        /**
+         * XML元素开始事件（如<row>、<c>、<v>标签）
+         */
+        @Override
+        public void startElement(String uri, String localName, String qName, Attributes attributes) {
+            // 若已终止解析，直接返回
+            if (isParseStopped) return;
+
+            // 1. 解析到“行”标签（<row r="1">，r属性表示行号，从1开始）
+            if ("row".equals(qName)) {
+                // 初始化当前行数据（清空上一行残留）
+                currentRowData.clear();
+                // 获取行号（转换为0开始的索引）
+                currentRowNum = Integer.parseInt(attributes.getValue("r")) - 1;
+                // 重置列索引（每行从第0列开始）
+                currentColumnIndex = 0;
+            }
+            // 2. 解析到“单元格”标签（<c r="A1" t="n">，r=列+行，t=单元格类型）
+            else if ("c".equals(qName)) {
+                // 标记开始解析单元格
+                isParsingCell = true;
+                currentCellValue.setLength(0); // 清空上一个单元格的残留值
+
+                // 处理“列索引”（如A→0、B→1、AA→26，通过r属性解析）
+                String cellRef = attributes.getValue("r"); // 如A1、B1、AA2
+                currentColumnIndex = getColumnIndex(cellRef);
+            }
+        }
+
+        /**
+         * XML元素内容事件（单元格的文本数据，如<v>123</v>中的“123”）
+         */
+        @Override
+        public void characters(char[] ch, int start, int length) {
+            // 若正在解析单元格，拼接文本数据
+            if (isParsingCell) {
+                currentCellValue.append(new String(ch, start, length));
+            }
+        }
+
+        /**
+         * XML元素结束事件（如</row>、</c>、</v>标签）
+         */
+        @Override
+        public void endElement(String uri, String localName, String qName) throws SAXException {
+            // 若已终止解析，直接返回
+            if (isParseStopped) return;
+
+            // 1. 单元格解析结束（</c>标签）
+            if ("c".equals(qName)) {
+                isParsingCell = false;
+                // 处理单元格值：1. 解析富文本；2. 业务层转换；3. 加入当前行数据
+                String rawValue = new XSSFRichTextString(currentCellValue.toString()).getString();
+                Object convertedValue = dataHandler.convertCellValue(rawValue, currentColumnIndex);
+                currentRowData.add(convertedValue);
+            }
+            // 2. 行解析结束（</row>标签）
+            else if ("row".equals(qName)) {
+                totalRows++;
+                // 触发业务层行数据处理回调，若返回false则终止解析
+                boolean continueParse = dataHandler.handleRowData(currentRowData, currentRowNum);
+                if (!continueParse) {
+                    isParseStopped = true;
+                }
+            }
+        }
+
+        /**
+         * 从单元格引用（如A1、B1、AA2）中解析列索引（A→0，B→1，AA→26）
+         */
+        private int getColumnIndex(String cellRef) {
+            int colIndex = 0;
+            // 遍历单元格引用的字母部分（如A1→取"A"，AA2→取"AA"）
+            for (int i = 0; i < cellRef.length(); i++) {
+                char c = cellRef.charAt(i);
+                if (Character.isLetter(c)) {
+                    // 字母转数字：A=1，B=2... → 转换为0开始的索引：(c - 'A' + 1) + 前一位*26
+                    colIndex = colIndex * 26 + (c - 'A' + 1);
+                } else {
+                    break; // 遇到数字（行号）则停止
+                }
+            }
+            return colIndex - 1; // 转换为0开始的索引
+        }
+
+        // Getter方法（供外部获取解析状态）
+        public boolean isParseStopped() {
+            return isParseStopped;
+        }
+
+        public int getTotalRows() {
+            return totalRows;
+        }
+    }
+}
