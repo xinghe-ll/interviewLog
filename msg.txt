@@ -1,0 +1,1 @@
+org.apache.poi.util.RecordFormatException: Tried to allocate an array of length 455,006,746, but the maximum length for this record type is 100,000,000.[N]If the file is not corrupt and not large, please open an issue on bugzilla to request [N]increasing the maximum allowable size for this record type.[N]You can set a higher override value with IOUtils.setMaxRecordSize().
