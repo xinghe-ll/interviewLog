@@ -1,0 +1,223 @@
+import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.ss.util.CellRangeAddress;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+
+public class DynamicMultiHeaderExcel {
+    // 存储自动计算的单元格合并区域
+    private static final List<CellRangeAddress> MERGE_REGIONS = new ArrayList<>();
+    // 表头总列数（最底层表头的数量）
+    private static int TOTAL_COLUMN = 0;
+    // 表头总行数（从第一行到最底层的总层数）
+    private static int TOTAL_HEADER_ROW = 0;
+
+    public static void main(String[] args) {
+        // 1. 构造测试用的多级表头（titleList = 第一行表头，示例为3行表头）
+        List<Title> titleList = buildTestTitleList();
+
+        // 2. 生成Excel（动态解析表头层级）
+        try {
+            generateExcel(titleList, "D:/MultiHeaderExcel.xlsx");
+            System.out.println("Excel生成成功！");
+            System.out.println("表头总行数：" + TOTAL_HEADER_ROW + "，表头总列数：" + TOTAL_COLUMN);
+        } catch (IOException e) {
+            e.printStackTrace();
+            System.out.println("Excel生成失败：" + e.getMessage());
+        } finally {
+            // 重置静态变量（避免多次调用时数据污染）
+            MERGE_REGIONS.clear();
+            TOTAL_COLUMN = 0;
+            TOTAL_HEADER_ROW = 0;
+        }
+    }
+
+    /**
+     * 构造测试用的3行表头（结构直观对应Excel表头）：
+     * 第1行（titleList）：销售数据、用户数据
+     * 第2行（销售数据的child）：2024、2023；（用户数据的child）：新用户、老用户
+     * 第3行（2024的child）：Q1、Q2；（2023的child）：Q3；（新用户的child）：新增数；（老用户的child）：活跃数
+     */
+    private static List<Title> buildTestTitleList() {
+        // -------------------------- 第3行表头（最底层，无child） --------------------------
+        Title q1 = new Title("Q1"); // child=null → 最底层
+        Title q2 = new Title("Q2");
+        Title q3 = new Title("Q3");
+        Title newUserCount = new Title("新增数");
+        Title oldUserCount = new Title("活跃数");
+
+        // -------------------------- 第2行表头（child = 第3行表头列表） --------------------------
+        // 2024的子表头：Q1、Q2（第3行）
+        Title title2024 = new Title("2024", List.of(q1, q2));
+        // 2023的子表头：Q3（第3行）
+        Title title2023 = new Title("2023", List.of(q3));
+        // 新用户的子表头：新增数（第3行）
+        Title titleNewUser = new Title("新用户", List.of(newUserCount));
+        // 老用户的子表头：活跃数（第3行）
+        Title titleOldUser = new Title("老用户", List.of(oldUserCount));
+
+        // -------------------------- 第1行表头（titleList = 第1行表头列表） --------------------------
+        // 销售数据的子表头：2024、2023（第2行）
+        Title salesData = new Title("销售数据", List.of(title2024, title2023));
+        // 用户数据的子表头：新用户、老用户（第2行）
+        Title userData = new Title("用户数据", List.of(titleNewUser, titleOldUser));
+
+        // 返回第1行表头列表（最终入参）
+        return List.of(salesData, userData);
+    }
+
+    /**
+     * 核心方法：生成多级表头Excel
+     * @param firstRowTitles 第一行表头列表（入参titleList）
+     * @param outputPath 输出文件路径
+     */
+    public static void generateExcel(List<Title> firstRowTitles, String outputPath) throws IOException {
+        // 步骤1：递归解析表头层级 → 计算总行数、总列数、合并规则（从第0行开始解析）
+        parseHeaderHierarchy(firstRowTitles, 0, 0);
+
+        // 步骤2：创建工作簿和工作表（XSSF对应.xlsx格式）
+        Workbook workbook = new XSSFWorkbook();
+        Sheet sheet = workbook.createSheet("多级表头数据");
+
+        // 步骤3：创建表头样式（居中、加粗、边框，提升可读性）
+        CellStyle headerStyle = createHeaderStyle(workbook);
+
+        // 步骤4：递归填充表头内容（从第0行、第0列开始填充）
+        fillHeaderContent(sheet, firstRowTitles, 0, 0, headerStyle);
+
+        // 步骤5：执行单元格合并（应用自动计算的合并规则）
+        for (CellRangeAddress region : MERGE_REGIONS) {
+            sheet.addMergedRegion(region);
+        }
+
+        // 步骤6：调整列宽（自适应内容，避免文字截断）
+        adjustColumnWidth(sheet);
+
+        // 步骤7：写入文件并关闭资源
+        try (FileOutputStream fos = new FileOutputStream(outputPath)) {
+            workbook.write(fos);
+        } finally {
+            workbook.close(); // 必须关闭，避免资源泄漏
+        }
+    }
+
+    /**
+     * 递归解析表头层级：计算总行数、总列数、合并规则
+     * @param currentTitles 当前行的表头列表
+     * @param currentRow 当前行号（从0开始，对应Excel行号）
+     * @param startCol 当前行表头的起始列号（从0开始）
+     * @return 当前行表头占用的总列数（供父层级计算合并范围）
+     */
+    private static int parseHeaderHierarchy(List<Title> currentTitles, int currentRow, int startCol) {
+        // 更新表头总行数（当前行+1 = 已解析的层级数，取最大值）
+        TOTAL_HEADER_ROW = Math.max(TOTAL_HEADER_ROW, currentRow + 1);
+
+        int currentCol = startCol; // 当前列号，从起始列累加
+
+        for (Title title : currentTitles) {
+            List<Title> childTitles = title.getChild();
+            if (childTitles == null || childTitles.isEmpty()) {
+                // 情况1：无child → 最底层表头，占1行1列
+                TOTAL_COLUMN = Math.max(TOTAL_COLUMN, currentCol + 1); // 更新总列数
+                currentCol++; // 列号+1
+            } else {
+                // 情况2：有child → 递归解析下一行子表头，计算当前表头的合并范围
+                // 递归获取子表头占用的总列数（子表头在currentRow+1行）
+                int childColumnCount = parseHeaderHierarchy(childTitles, currentRow + 1, currentCol);
+
+                // 计算合并范围：当前表头占「从currentRow到最后一行」的行，「currentCol到currentCol+子列数-1」的列
+                int endRow = TOTAL_HEADER_ROW - 1; // 最后一行行号（总行数-1）
+                int endCol = currentCol + childColumnCount - 1; // 合并的结束列号
+                MERGE_REGIONS.add(new CellRangeAddress(currentRow, endRow, currentCol, endCol));
+
+                currentCol += childColumnCount; // 列号累加子表头占用的列数
+            }
+        }
+        // 返回当前行表头占用的总列数（供父层级计算合并）
+        return currentCol - startCol;
+    }
+
+    /**
+     * 递归填充表头内容：按行号和列号，将表头名称写入单元格
+     * @param sheet 工作表
+     * @param currentTitles 当前行的表头列表
+     * @param currentRow 当前行号
+     * @param startCol 当前行起始列号
+     * @param style 表头样式
+     * @return 填充完成后的列号（供父层级继续填充）
+     */
+    private static int fillHeaderContent(Sheet sheet, List<Title> currentTitles, int currentRow, int startCol, CellStyle style) {
+        int currentCol = startCol;
+
+        for (Title title : currentTitles) {
+            List<Title> childTitles = title.getChild();
+
+            // 创建当前行（若未创建）
+            Row row = sheet.getRow(currentRow);
+            if (row == null) {
+                row = sheet.createRow(currentRow);
+            }
+
+            // 创建当前单元格，赋值并应用样式
+            Cell cell = row.createCell(currentCol);
+            cell.setCellValue(title.getTitleName());
+            cell.setCellStyle(style);
+
+            if (childTitles != null && !childTitles.isEmpty()) {
+                // 有child → 递归填充下一行子表头，列号从当前列开始
+                currentCol = fillHeaderContent(sheet, childTitles, currentRow + 1, currentCol, style);
+            } else {
+                // 无child → 列号+1（下一个表头）
+                currentCol++;
+            }
+        }
+        return currentCol;
+    }
+
+    /**
+     * 创建表头样式：居中、加粗、边框（避免合并后无边框）
+     */
+    private static CellStyle createHeaderStyle(Workbook workbook) {
+        CellStyle style = workbook.createCellStyle();
+        // 字体：加粗
+        Font font = workbook.createFont();
+        font.setBold(true);
+        style.setFont(font);
+        // 对齐：水平居中 + 垂直居中（避免文字偏移）
+        style.setAlignment(HorizontalAlignment.CENTER);
+        style.setVerticalAlignment(VerticalAlignment.CENTER);
+        // 边框：上下左右细线（Excel默认无边框，手动添加更清晰）
+        s
+
+/**
+      * 创建表头样式：居中、加粗、边框（避免合并后无边框）
+      */
+     private static CellStyle createHeaderStyle(Workbook workbook) {
+         CellStyle style = workbook.createCellStyle();
+         // 字体：加粗
+         Font font = workbook.createFont();
+         font.setBold(true);
+         style.setFont(font);
+         // 对齐：水平居中 + 垂直居中（避免文字偏移）
+         style.setAlignment(HorizontalAlignment.CENTER);
+         style.setVerticalAlignment(VerticalAlignment.CENTER);
+         // 边框：上下左右细线（Excel默认无边框，手动添加更清晰）
+         style.setBorderTop(BorderStyle.THIN);
+         style.setBorderBottom(BorderStyle.THIN);
+         style.setBorderLeft(BorderStyle.THIN);
+         style.setBorderRight(BorderStyle.THIN);
+         return style;
+     }
+     /**
+      * 调整列宽：自适应内容，避免文字截断（补充宽度防止过窄）
+      */
+     private static void adjustColumnWidth(Sheet sheet) {
+         for (int i = 0; i < TOTAL_COLUMN; i++) {
+             sheet.autoSizeColumn(i); // 先自适应列宽
+             // 加宽1200单位（自适应可能偏窄，补充后更美观）
+             int finalWidth = Math.min(sheet.getColumnWidth(i) + 1200, 65535); // 65535是Excel列宽上限
+             sheet.setColumnWidth(i, finalWidth);
+         }
