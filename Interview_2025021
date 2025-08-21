@@ -5,5 +5,6 @@
 5.hashmap(1.7 - 1.8区别), hashmap的put()? 扩容逻辑?
 6.syncrinize, reentrantlock区别
 7.红黑树理解
+8.索引失效的场景
 
 国产数据库: 南大通用, 达梦数据库
