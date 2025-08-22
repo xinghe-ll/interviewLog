@@ -3,7 +3,7 @@
 3.千万级表,某字段全模糊查询?  // 建表-分词,  引入ES
 4.项目中遇到什么难点?  // cpu%100, 内存OOM, 
 5.hashmap(1.7 - 1.8区别), hashmap的put()? 扩容逻辑?
-6.syncrinize, reentrantlock区别
+6.syncrinize, reentrantlock区别, 公平锁与非公平锁实现
 7.红黑树理解
 8.索引失效的场景
 9.in()条件最大限制是1000, 怎么解决?
