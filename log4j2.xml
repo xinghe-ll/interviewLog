@@ -1,0 +1,267 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="WARN" monitorInterval="60">
+
+	<properties>
+		<property name="logPath">/applog/accesspreprocessing/logs</property>
+		<property name="every_file_size">20M</property><!-- 日志切割的最小单位 -->
+		<property name="output_log_level">${sys:root.log.level:-ERROR}</property><!-- 日志输出级别 -->
+		<property name="rootLoggingFormat">%d{yyyy-MM-dd HH:mm:ss,SSS} [%t] %-5p %c{1.}:%L - %X{erpLoggingTraceInfo}%msg%n</property><!-- 定义输入的格式 -->
+	</properties>
+
+	<Appenders>
+		<Console name="Console" target="SYSTEM_OUT">
+			<!-- <PatternLayout pattern="%d{yyyy-MM-dd HH:mm:ss} [%t] %-5p %c{1}:%L - %msg%n" /> -->
+			<!-- <PatternLayout pattern="%d{HH:mm:ss} [%t] %-5level %logger{36} - %msg%n" /> -->
+			<!-- <PatternLayout pattern="%-d [%t] %-5p %c{1}:%L - %m%n" /> -->
+			<!-- 日志脱敏 -->
+			<CustomPatternLayout pattern="%d{yyyy-MM-dd HH:mm:ss} [%t] %-5p %c{1}:%L - %msg%n" sensitive="true">
+				<replace>
+					<!-- 设置屏蔽关键词 -->
+					<regex>
+						<![CDATA[
+							(clientIp|clientip|work_key_cipher|cipher|email|imei|url|token|session|ticket|password|username|address|mobile number|SESSION|Session|session|decrypt|mima|sharekey|checkpwd|crypto|cardno|PINNUMBER|encrypt|register|secret|passwd|password|udaConnection|udaUserPasswd|uupd|credential|zookeeperAuthInfo|zookeeperAuthInfoNoTime|Auth|auth|token|Token|pwd|PWD|dec|enc|pswd|PASSWORD|psw|pin|sms|SMS|email|mail|personal|phonenumber|PhoneNum|Location|cookies|cookie|security|authorization|Authorization|systemversion|key|url|GPS|Phone|phone|latitude|longitude|bankAccount|bankNumber|ebankNo|bankAccountNumber|bankAccountNo|debitBankAccount|supplierBankAccountNumber|bankAccountNum|accountNo|accountNumber|accountNumber1|accountNumber2|maskedBankAccountNum|sw8|unitPrice)(=|=\[|\":\"|\":|\\":\\"|\\":|:|：|=')([\\u4e00-\\u9fa5_a-zA-Z0-9-.]+)(\]|\"|'|}|,|)
+						]]>
+					</regex>
+					<replacement>$1$2******$4</replacement>
+				</replace>
+			</CustomPatternLayout>
+		</Console>
+
+		<RollingFile name="root" filename="${logPath}/root.log"
+					 filepattern="${logPath}/%d{yyyyMMdd}-%i-root.log">
+			<!-- <PatternLayout pattern="%d{yyyy-MM-dd HH:mm:ss,SSS} [%t] %-5p %c{1}:%L - %msg%n" /> -->
+			<!-- 日志脱敏 -->
+			<CustomPatternLayout pattern="%d{yyyy-MM-dd HH:mm:ss,SSS} [%t] %-5p %c{1}:%L - %msg%n" sensitive="true">
+				<replace>
+					<!-- 设置屏蔽关键词 -->
+					<regex>
+						<![CDATA[
+							(clientIp|clientip|work_key_cipher|cipher|email|imei|url|token|session|ticket|password|username|address|mobile number|SESSION|Session|session|decrypt|mima|sharekey|checkpwd|crypto|cardno|PINNUMBER|encrypt|register|secret|passwd|password|udaConnection|udaUserPasswd|uupd|credential|zookeeperAuthInfo|zookeeperAuthInfoNoTime|Auth|auth|token|Token|pwd|PWD|dec|enc|pswd|PASSWORD|psw|pin|sms|SMS|email|mail|personal|phonenumber|PhoneNum|Location|cookies|cookie|security|authorization|Authorization|systemversion|key|url|GPS|Phone|phone|latitude|longitude|bankAccount|bankNumber|ebankNo|bankAccountNumber|bankAccountNo|debitBankAccount|supplierBankAccountNumber|bankAccountNum|accountNo|accountNumber|accountNumber1|accountNumber2|maskedBankAccountNum|sw8|unitPrice)(=|=\[|\":\"|\":|\\":\\"|\\":|:|：|=')([\\u4e00-\\u9fa5_a-zA-Z0-9-.]+)(\]|\"|'|}|,|)
+						]]>
+					</regex>
+					<replacement>$1$2******$4</replacement>
+				</replace>
+			</CustomPatternLayout>
+			<Policies>
+				<SizeBasedTriggeringPolicy size="20 MB"/>
+			</Policies>
+			<DefaultRolloverStrategy max="100"/>
+		</RollingFile>
+
+
+		<RollingFile name="root-error" filename="${logPath}/root-error.log"
+					 filepattern="${logPath}/%d{yyyyMMdd}-%i-root-error.log">
+			<ThresholdFilter level="error" onMatch="ACCEPT" onMismatch="DENY"/>
+			<!-- <PatternLayout pattern="%d{yyyy-MM-dd HH:mm:ss,SSS} [%t] %-5p %c{1}:%L - %msg%n" /> -->
+			<!-- 日志脱敏 -->
+			<CustomPatternLayout pattern="%d{yyyy-MM-dd HH:mm:ss,SSS} [%t] %-5p %c{1}:%L - %msg%n" sensitive="true">
+				<replace>
+					<!-- 设置屏蔽关键词 -->
+					<regex>
+						<![CDATA[
+							(clientIp|clientip|work_key_cipher|cipher|email|imei|url|token|session|ticket|password|username|address|mobile number|SESSION|Session|session|decrypt|mima|sharekey|checkpwd|crypto|cardno|PINNUMBER|encrypt|register|secret|passwd|password|udaConnection|udaUserPasswd|uupd|credential|zookeeperAuthInfo|zookeeperAuthInfoNoTime|Auth|auth|token|Token|pwd|PWD|dec|enc|pswd|PASSWORD|psw|pin|sms|SMS|email|mail|personal|phonenumber|PhoneNum|Location|cookies|cookie|security|authorization|Authorization|systemversion|key|url|GPS|Phone|phone|latitude|longitude|bankAccount|bankNumber|ebankNo|bankAccountNumber|bankAccountNo|debitBankAccount|supplierBankAccountNumber|bankAccountNum|accountNo|accountNumber|accountNumber1|accountNumber2|maskedBankAccountNum|sw8|unitPrice)(=|=\[|\":\"|\":|\\":\\"|\\":|:|：|=')([\\u4e00-\\u9fa5_a-zA-Z0-9-.]+)(\]|\"|'|}|,|)
+						]]>
+					</regex>
+					<replacement>$1$2******$4</replacement>
+				</replace>
+			</CustomPatternLayout>
+			<Policies>
+				<SizeBasedTriggeringPolicy size="20 MB"/>
+			</Policies>
+			<DefaultRolloverStrategy max="100"/>
+		</RollingFile>
+
+		<RollingFile name="app" filename="${logPath}/app.log"
+					 filepattern="${logPath}/%d{yyyyMMdd}-%i-app.log">
+			<!-- <PatternLayout pattern="%d{yyyy-MM-dd HH:mm:ss,SSS} [%t] %-5p %c{1}:%L - %msg%n" /> -->
+			<!-- 日志脱敏 -->
+			<CustomPatternLayout pattern="%d{yyyy-MM-dd HH:mm:ss,SSS} [%t] %-5p %c{1}:%L - %msg%n" sensitive="true">
+				<replace>
+					<!-- 设置屏蔽关键词 -->
+					<regex>
+						<![CDATA[
+							(clientIp|clientip|work_key_cipher|cipher|email|imei|url|token|session|ticket|password|username|address|mobile number|SESSION|Session|session|decrypt|mima|sharekey|checkpwd|crypto|cardno|PINNUMBER|encrypt|register|secret|passwd|password|udaConnection|udaUserPasswd|uupd|credential|zookeeperAuthInfo|zookeeperAuthInfoNoTime|Auth|auth|token|Token|pwd|PWD|dec|enc|pswd|PASSWORD|psw|pin|sms|SMS|email|mail|personal|phonenumber|PhoneNum|Location|cookies|cookie|security|authorization|Authorization|systemversion|key|url|GPS|Phone|phone|latitude|longitude|bankAccount|bankNumber|ebankNo|bankAccountNumber|bankAccountNo|debitBankAccount|supplierBankAccountNumber|bankAccountNum|accountNo|accountNumber|accountNumber1|accountNumber2|maskedBankAccountNum|sw8|unitPrice)(=|=\[|\":\"|\":|\\":\\"|\\":|:|：|=')([\\u4e00-\\u9fa5_a-zA-Z0-9-.]+)(\]|\"|'|}|,|)
+						]]>
+					</regex>
+					<replacement>$1$2******$4</replacement>
+				</replace>
+			</CustomPatternLayout>
+			<Policies>
+				<SizeBasedTriggeringPolicy size="20 MB"/>
+			</Policies>
+			<DefaultRolloverStrategy max="100"/>
+		</RollingFile>
+
+		<RollingFile name="sql" filename="${logPath}/sql.log"
+					 filepattern="${logPath}/%d{yyyyMMdd}-%i-sql.log">
+			<!--			<PatternLayout pattern="%d{yyyy-MM-dd HH:mm:ss,SSS} [%t] %-5p %c{1}:%L - %msg%n" />-->
+			<!-- 日志脱敏 -->
+			<CustomPatternLayout pattern="%d{yyyy-MM-dd HH:mm:ss,SSS} [%t] %-5p %c{1}:%L - %msg%n" sensitive="true">
+				<replace>
+					<!-- 设置屏蔽关键词 -->
+					<regex>
+						<![CDATA[
+							(clientIp|clientip|work_key_cipher|cipher|email|imei|url|token|session|ticket|password|username|address|mobile number|SESSION|Session|session|decrypt|mima|sharekey|checkpwd|crypto|cardno|PINNUMBER|encrypt|register|secret|passwd|password|udaConnection|udaUserPasswd|uupd|credential|zookeeperAuthInfo|zookeeperAuthInfoNoTime|Auth|auth|token|Token|pwd|PWD|dec|enc|pswd|PASSWORD|psw|pin|sms|SMS|email|mail|personal|phonenumber|PhoneNum|Location|cookies|cookie|security|authorization|Authorization|systemversion|key|url|GPS|Phone|phone|latitude|longitude|bankAccount|bankNumber|ebankNo|bankAccountNumber|bankAccountNo|debitBankAccount|supplierBankAccountNumber|bankAccountNum|accountNo|accountNumber|accountNumber1|accountNumber2|maskedBankAccountNum|sw8|unitPrice)(=|=\[|\":\"|\":|\\":\\"|\\":|:|：|=')([\\u4e00-\\u9fa5_a-zA-Z0-9-.]+)(\]|\"|'|}|,|)
+						]]>
+					</regex>
+					<replacement>$1$2******$4</replacement>
+				</replace>
+			</CustomPatternLayout>
+			<Policies>				<SizeBasedTriggeringPolicy size="20 MB"/>
+			</Policies>
+			<DefaultRolloverStrategy max="100"/>
+		</RollingFile>
+
+		<RollingFile name="jalor" filename="${logPath}/jalor.log"
+					 filepattern="${logPath}/%d{yyyyMMdd}-%i-jalor.log">
+			<!--			<PatternLayout pattern="%d{yyyy-MM-dd HH:mm:ss,SSS} [%t] %-5p %c{1}:%L - %msg%n" />-->
+			<!-- 日志脱敏 -->
+			<CustomPatternLayout pattern="%d{yyyy-MM-dd HH:mm:ss,SSS} [%t] %-5p %c{1}:%L - %msg%n" sensitive="true">
+				<replace>
+					<!-- 设置屏蔽关键词 -->
+					<regex>
+						<![CDATA[
+							(clientIp|clientip|work_key_cipher|cipher|email|imei|url|token|session|ticket|password|username|address|mobile number|SESSION|Session|session|decrypt|mima|sharekey|checkpwd|crypto|cardno|PINNUMBER|encrypt|register|secret|passwd|password|udaConnection|udaUserPasswd|uupd|credential|zookeeperAuthInfo|zookeeperAuthInfoNoTime|Auth|auth|token|Token|pwd|PWD|dec|enc|pswd|PASSWORD|psw|pin|sms|SMS|email|mail|personal|phonenumber|PhoneNum|Location|cookies|cookie|security|authorization|Authorization|systemversion|key|url|GPS|Phone|phone|latitude|longitude|bankAccount|bankNumber|ebankNo|bankAccountNumber|bankAccountNo|debitBankAccount|supplierBankAccountNumber|bankAccountNum|accountNo|accountNumber|accountNumber1|accountNumber2|maskedBankAccountNum|sw8|unitPrice)(=|=\[|\":\"|\":|\\":\\"|\\":|:|：|=')([\\u4e00-\\u9fa5_a-zA-Z0-9-.]+)(\]|\"|'|}|,|)
+						]]>
+					</regex>
+					<replacement>$1$2******$4</replacement>
+				</replace>
+			</CustomPatternLayout>
+			<Policies>
+				<SizeBasedTriggeringPolicy size="20 MB"/>
+			</Policies>
+			<DefaultRolloverStrategy max="100"/>
+		</RollingFile>
+
+
+		<RollingFile name="workflow" filename="${logPath}/workflow.log"
+					 filepattern="${logPath}/%d{yyyyMMdd}-%i-workflow.log">
+			<!--			<PatternLayout pattern="%d{yyyy-MM-dd HH:mm:ss,SSS} [%t] %-5p %c{1}:%L - %msg%n" />-->
+			<!-- 日志脱敏 -->
+			<CustomPatternLayout pattern="%d{yyyy-MM-dd HH:mm:ss,SSS} [%t] %-5p %c{1}:%L - %msg%n" sensitive="true">
+				<replace>
+					<!-- 设置屏蔽关键词 -->
+					<regex>
+						<![CDATA[
+							(clientIp|clientip|work_key_cipher|cipher|email|imei|url|token|session|ticket|password|username|address|mobile number|SESSION|Session|session|decrypt|mima|sharekey|checkpwd|crypto|cardno|PINNUMBER|encrypt|register|secret|passwd|password|udaConnection|udaUserPasswd|uupd|credential|zookeeperAuthInfo|zookeeperAuthInfoNoTime|Auth|auth|token|Token|pwd|PWD|dec|enc|pswd|PASSWORD|psw|pin|sms|SMS|email|mail|personal|phonenumber|PhoneNum|Location|cookies|cookie|security|authorization|Authorization|systemversion|key|url|GPS|Phone|phone|latitude|longitude|bankAccount|bankNumber|ebankNo|bankAccountNumber|bankAccountNo|debitBankAccount|supplierBankAccountNumber|bankAccountNum|accountNo|accountNumber|accountNumber1|accountNumber2|maskedBankAccountNum|sw8|unitPrice)(=|=\[|\":\"|\":|\\":\\"|\\":|:|：|=')([\\u4e00-\\u9fa5_a-zA-Z0-9-.]+)(\]|\"|'|}|,|)
+						]]>
+					</regex>
+					<replacement>$1$2******$4</replacement>
+				</replace>
+			</CustomPatternLayout>
+			<Policies>
+				<SizeBasedTriggeringPolicy size="20 MB"/>
+			</Policies>
+			<DefaultRolloverStrategy max="100"/>
+		</RollingFile>
+	</Appenders>
+
+	<Loggers>
+		<Logger name="com.huawei.it.jalor5.workflow" level="${output_log_level}" additivity="true">
+			<AppenderRef ref="workflow"/>
+		</Logger>
+
+		<Logger name="com.huawei.it.jalor5" level="${output_log_level}" additivity="true">
+			<AppenderRef ref="jalor"/>
+		</Logger>
+
+		<Logger name="com.huawei.it" level="${output_log_level}" additivity="true">
+			<AppenderRef ref="app"/>
+		</Logger>
+
+		<Logger name="JalorMail" level="${output_log_level}" additivity="true">
+			<AppenderRef ref="mail"/>
+			<AppenderRef ref="mail-error"/>
+		</Logger>
+
+		<Logger name="java.sql.Connection" level="${output_log_level}" additivity="true">
+			<AppenderRef ref="sql"/>
+		</Logger>
+
+		<Logger name="java.sql.PreparedStatement" level="${output_log_level}" additivity="true">
+			<AppenderRef ref="sql"/>
+		</Logger>
+
+		<Logger name="java.sql.ResultSet" level="${output_log_level}" additivity="true">
+			<AppenderRef ref="sql"/>
+		</Logger>
+
+		<Logger name="org.springframework.jdbc.datasource.DataSourceTransactionManager" level="${output_log_level}" additivity="true">
+			<AppenderRef ref="sql"/>
+		</Logger>
+
+		<Logger name="org.springframework.transaction.jta.WebSphereUowTransactionManager" level="${output_log_level}" additivity="false">
+			<AppenderRef ref="sql"/>
+		</Logger>
+
+		<Logger name="java.sql.Statement" level="${output_log_level}" additivity="true">
+			<AppenderRef ref="sql"/>
+		</Logger>
+
+		<Logger name="org.apache.ibatis" level="${output_log_level}" additivity="true">
+			<AppenderRef ref="sql"/>
+		</Logger>
+
+		<Logger name="org.mybatis.spring" level="${output_log_level}" additivity="true">
+			<AppenderRef ref="sql"/>
+		</Logger>
+
+		<Logger name="org.springframework" level="${output_log_level}" additivity="true">
+		</Logger>
+
+		<Logger name="org.apache.commons" level="${output_log_level}" additivity="true">
+		</Logger>
+
+		<Logger name="org.apache.velocity" level="${output_log_level}" additivity="true">
+		</Logger>
+
+		<Logger name="org.apache.cxf.configuration.spring" level="${output_log_level}" additivity="true">
+		</Logger>
+
+		<Logger name="com.opensymphony.xwork2" level="${output_log_level}" additivity="true">
+		</Logger>
+
+		<Logger name="net.sf.ehcache" level="${output_log_level}" additivity="true">
+		</Logger>
+
+		<Logger name="org.apache.cxf" level="${output_log_level}" additivity="true">
+		</Logger>
+		<Logger name="httpclient.wire" level="${output_log_level}" additivity="true">
+		</Logger>
+		<Logger name="org.apache.http" level="${output_log_level}" additivity="true">
+		</Logger>
+		<Logger name="com.amazonaws" level="${output_log_level}" additivity="true">
+		</Logger>
+
+		<Logger name="com.huawei.hsa" level="${output_log_level}" additivity="true">
+			<AppenderRef ref="vega-core"/>
+		</Logger>
+
+		<Logger name="com.huawei.msacore" level="${output_log_level}" additivity="true">
+			<AppenderRef ref="vega-console"/>
+		</Logger>
+
+		<Logger name="org.apache.commons.httpclient.HttpMethodDirector" level="${output_log_level}" additivity="true">
+		</Logger>
+
+		<Logger name="com.huawei.it.jalor5.vega.service.JalorRestClient" level="${output_log_level}" additivity="true">
+		</Logger>
+
+		<Logger name="RocketmqClient" level="${output_log_level}" additivity="false">
+			<AppenderRef ref="RocketmqClientAppender" />
+		</Logger>
+		<Logger name="RocketmqCommon" level="${output_log_level}" additivity="false">
+			<AppenderRef ref="RocketmqClientAppender" />
+		</Logger>
+		<Logger name="RocketmqRemoting" level="${output_log_level}" additivity="false">
+			<AppenderRef ref="RocketmqClientAppender" />
+		</Logger>
+
+		<!-- 上线时，应该将各个info改为info以上级别，并去除console的Appender -->
+		<Root level="${output_log_level}">
+			<AppenderRef ref="Console" />
+			<AppenderRef ref="root" />
+			<AppenderRef ref="root-error" />
+		</Root>
+	</Loggers>
+</Configuration>
