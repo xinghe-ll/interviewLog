@@ -4,4 +4,4 @@
 4.消息怎么保证不丢失, mq消息-消费侧-return重发,是否有什么问题?
 5.eureka节点宕机了, A服务调用B服务吗? 为什么?
 6.eureka的CAP理解
-
+springboot自动装配原理，与spi的联系
