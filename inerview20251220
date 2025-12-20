@@ -1,0 +1,5 @@
+1. 线程池、MQ的选用场景
+2. filter， interceptor, aop 执行顺序
+3. redis是AP/CP??
+4. 分布式锁的实现方式
+5.
