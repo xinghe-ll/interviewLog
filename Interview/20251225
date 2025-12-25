@@ -1,0 +1,17 @@
+保证消息不丢失，
+保证消息有序
+synchronized锁
+类加载机制
+单例模式
+分布式事务怎么设计（seta? 场景：订单，库存，支付，等等）
+redis内存溢出怎么排查
+k8s，docker命令
+镜像生成部署步骤
+注解的底层原理
+springboot启动过程
+springbean生命周期
+springboot自动装配原理
+
+
+
+
